@@ -6,7 +6,6 @@ import copy
 import csv
 import numpy as np
 from datetime import datetime
-import time
 import json
 def timecha(time1,time2):
     diff_day = (time1 - time2).days
@@ -19,7 +18,7 @@ def timecha(time1,time2):
         print(T)  # 时间单元数差
     else:
         T = diff_day
-        print("时间差",T)  # 时间单元数差
+        print("时间差", T)  # 时间单元数差
     return T
 def read_each_huati(path_base):
     p = os.walk(path_base)  # html文件夹路径
@@ -27,6 +26,8 @@ def read_each_huati(path_base):
     li_count = []  # 存放每个话题里的微博文章数Mj
     li_T = []  # 话题持续时间T
     li_dt = []  # 当前时间与话题首次发布时间的时间单元数差+1
+    li_starttime=[]  #每个事件的开始时间
+    li_endtime=[]  #每个事件的结束时间
     count = 1
     for path, dir_list, file_list in p:
         for file_name in file_list:
@@ -51,24 +52,36 @@ def read_each_huati(path_base):
             rows = df1.index.size  # 行
             # print(rows)
             li_count.append(rows)
+            # 求每个话题的持续时间Tj
             with open(path, 'r', encoding='utf-8') as csvfile:
                 reader = csv.reader(csvfile)
                 # print(reader)
                 mod_times = [row[3] for row in reader]  #提取每一行的时间
             mod_times = [datetime.strptime(x, r"%Y-%m-%d %H:%M:%S") for x in mod_times[1:]]
+            print("mod_times",type(mod_times))
+            print(mod_times)
             max_time = max(mod_times)
             min_time = min(mod_times)
-            print(type(max_time))
+            # print(type(max_time))
             print(max_time)
             print(min_time)
-            T=timecha(max_time,min_time)
+            T = timecha(max_time, min_time)
             li_T.append(T)
+
+            # 定义爬虫的起止时间
+            li_starttime.append(min_time)
+            li_endtime.append(max_time)
+
             # 获取当地时间,格式化成2016-03-20 11:45:39形式
             now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # 获取当地时间
             now = datetime.strptime(now, '%Y-%m-%d %H:%M:%S')  # 改str类型为datetime.datetime类型
-            dt=timecha(now,min_time)
+            dt = timecha(now, min_time)
             li_dt.append(dt)
-
+        # 计算爬虫的起止时间
+        end_time = max(li_endtime)  # 每个事件结束时间的最大值，得到爬虫的结束时间
+        start_time = min(li_starttime)  # 每个事件开始时间的最小值，得到爬虫的开始时间
+        n_dt = timecha(end_time, start_time)
+        print(n_dt)  # 爬虫的起止时间
         print(li_all)  # [[1, 2290, 2280, 2155], [2, 3060, 2898, 2782], [3, 2021, 2041, 1855]]
         print(li_count)  # [24, 32, 21]
         print(li_T)  # [448, 448, 464]
@@ -76,14 +89,13 @@ def read_each_huati(path_base):
         print(M)  # 所有话题的全部文章数
         print(li_dt)
 
-    # huaticsv_path = os.path.join(path_base, 'huati.csv').replace("\\", "\\\\")
     huaticsv_path = 'huati1.csv'
-    # with open(huaticsv_path, "a", encoding='utf-8', newline='') as csvfile:  # 写csv文件表头
-    #     writer = csv.writer(csvfile)
-    #     writer.writerow(['话题', '该话题总转发数', '该话题总评论数'])
-    #     for li in li_all:
-    #         writer.writerow(li)
-    return li_count, li_T, M, li_dt, huaticsv_path
+    with open(huaticsv_path, "a", encoding='utf-8', newline='') as csvfile:  # 写csv文件表头
+        writer = csv.writer(csvfile)
+        writer.writerow(['话题', '该话题总转发数', '该话题总评论数'])
+        for li in li_all:
+            writer.writerow(li)
+    return li_count, li_T, M, li_dt, huaticsv_path, n_dt
 
 
 # 定义熵值法函数
@@ -134,20 +146,14 @@ def main():
     path_base = 'D:\my_file\研究生期间的资料\影响力评价模型-参考论文\司法案件影响力评估-项目\data-all\data-all\status\status-by-keyword'
 
     # 1、读取每一个话题csv文件，计算每个话题的总赞，总转发，总评论，存入huati.csv文件
-    li_count, li_T, M, li_dt, huaticsv_path = read_each_huati(path_base)
+
+    li_count, li_T, M, li_dt, huaticsv_path, n_dt = read_each_huati(path_base)
 
     print(li_count)  # [24, 32, 21]Mj
     print(li_T)  # [448, 448, 464]T
     print(M)  # 所有话题的全部文章数
     print(li_dt)
-
-    # 定义爬虫的起止时间
-    start_time = '2020-12-14 00:00:00'
-    end_time = '2021-01-10 23:59:59'
-    start_time = datetime.strptime(start_time, '%Y-%m-%d %H:%M:%S')  # 改str类型为datetime.datetime类型
-    end_time = datetime.strptime(end_time, '%Y-%m-%d %H:%M:%S')  # 改str类型为datetime.datetime类型
-    n_dt=timecha(end_time, start_time)
-    print(n_dt)  # 爬虫的起止时间
+    print(n_dt)
 
  #计算公式中的除法
 
@@ -193,10 +199,6 @@ def main():
     df.drop(columns="话题", axis=1, inplace=True)
     score = cal_weight(df)
     print(score)
- #    print(li_count_result)  # ln(Mj/Tj)
- #    print(count_result)  # exp(Mj/M)
- #    print(n_result)  # nu/n
- #    print(li_dt_result)  # (dt+1)^-0.1
     m=1
     dict1={}
     list1=[]
