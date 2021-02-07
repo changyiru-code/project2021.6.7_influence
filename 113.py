@@ -16,14 +16,14 @@ def timecha(time1,time2):
     # print("%d days,%02d hours,%02d minites,%02d seconds" % (diff_day, h, m, s))
     if (diff_day == 0 and (h != 0 or m != 0 or s != 0)) or h > 12:
         T = diff_day + 1
-        print(T)  # 当前时间与话题首次发布时间的时间单元数差
+        print(T)  # 时间单元数差
     else:
         T = diff_day
-        print("时间差",T)  # 当前时间与话题首次发布时间的时间单元数差
+        print("时间差",T)  # 时间单元数差
     return T
 def read_each_huati(path_base):
     p = os.walk(path_base)  # html文件夹路径
-    li_all = []  # 存放每个话题的全部点赞，转发，评论数
+    li_all = []  # 存放每个话题的全部转发，评论数
     li_count = []  # 存放每个话题里的微博文章数Mj
     li_T = []  # 话题持续时间T
     li_dt = []  # 当前时间与话题首次发布时间的时间单元数差+1
@@ -36,7 +36,7 @@ def read_each_huati(path_base):
             path = path.replace("\\", "\\\\")
             # print(path)
             # 1读取数据
-            df1 = pd.read_csv(path, usecols=['zan','zhuanfa', 'pinglun'],encoding='utf-8')
+            df1 = pd.read_csv(path, usecols=['repostsCount','commentsCount'],encoding='utf-8')
             # print(df1)
             ylist_sum = df1.sum(axis=0)
             li_ylist_sum=ylist_sum.values.tolist()
@@ -54,13 +54,13 @@ def read_each_huati(path_base):
             with open(path, 'r', encoding='utf-8') as csvfile:
                 reader = csv.reader(csvfile)
                 # print(reader)
-                mod_times = [row[7] for row in reader]  #提取每一行的时间
-            mod_times = [time.strptime(x, u"%m月%d日") for x in mod_times[1:]]
-            mod_times = [time.strftime("%m/%d", x) for x in mod_times]#将月日改成 /
-            mod_times = [datetime.strptime(x, r"%m/%d") for x in mod_times]#将字符串类型转成时间类型
+                mod_times = [row[3] for row in reader]  #提取每一行的时间
+            mod_times = [datetime.strptime(x, r"%Y-%m-%d %H:%M:%S") for x in mod_times[1:]]
             max_time = max(mod_times)
             min_time = min(mod_times)
-            # print(type(max_time))
+            print(type(max_time))
+            print(max_time)
+            print(min_time)
             T=timecha(max_time,min_time)
             li_T.append(T)
             # 获取当地时间,格式化成2016-03-20 11:45:39形式
@@ -77,12 +77,13 @@ def read_each_huati(path_base):
         print(li_dt)
 
     # huaticsv_path = os.path.join(path_base, 'huati.csv').replace("\\", "\\\\")
+    huaticsv_path = 'huati1.csv'
     # with open(huaticsv_path, "a", encoding='utf-8', newline='') as csvfile:  # 写csv文件表头
     #     writer = csv.writer(csvfile)
-    #     writer.writerow(['话题', '该话题总赞数', '该话题总转发数', '该话题总评论数'])
+    #     writer.writerow(['话题', '该话题总转发数', '该话题总评论数'])
     #     for li in li_all:
     #         writer.writerow(li)
-    return li_count, li_T, M, li_dt
+    return li_count, li_T, M, li_dt, huaticsv_path
 
 
 # 定义熵值法函数
@@ -130,10 +131,10 @@ def normalize(count_result):
     return norm_result
 
 def main():
-    path_base = 'data'
+    path_base = 'D:\my_file\研究生期间的资料\影响力评价模型-参考论文\司法案件影响力评估-项目\data-all\data-all\status\status-by-keyword'
 
     # 1、读取每一个话题csv文件，计算每个话题的总赞，总转发，总评论，存入huati.csv文件
-    li_count, li_T, M, li_dt = read_each_huati(path_base)
+    li_count, li_T, M, li_dt, huaticsv_path = read_each_huati(path_base)
 
     print(li_count)  # [24, 32, 21]Mj
     print(li_T)  # [448, 448, 464]T
@@ -141,8 +142,8 @@ def main():
     print(li_dt)
 
     # 定义爬虫的起止时间
-    start_time = '2020-04-01 00:00:00'
-    end_time = '2020-05-01 00:00:00'
+    start_time = '2020-12-14 00:00:00'
+    end_time = '2021-01-10 23:59:59'
     start_time = datetime.strptime(start_time, '%Y-%m-%d %H:%M:%S')  # 改str类型为datetime.datetime类型
     end_time = datetime.strptime(end_time, '%Y-%m-%d %H:%M:%S')  # 改str类型为datetime.datetime类型
     n_dt=timecha(end_time, start_time)
@@ -184,7 +185,7 @@ def main():
 
     #  2、读取huati.csv文件，利用熵权法计算每个话题赞，转发，评论对话题影响力的贡献值
     # 1读取数据
-    df = pd.read_csv(('huati.csv').replace("\\", "\\\\"), encoding='utf-8')
+    df = pd.read_csv((huaticsv_path).replace("\\", "\\\\"), encoding='utf-8')
     # df = pd.read_csv(os.path.join(path_base, 'huati.csv').replace("\\", "\\\\"), encoding='utf-8')
     # 2数据预处理 ,去除空值的记录
     df.dropna()

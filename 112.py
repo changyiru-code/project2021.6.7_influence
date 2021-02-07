@@ -141,7 +141,7 @@ def main():
 
     # 定义爬虫的起止时间
     start_time = '2020-04-01 00:00:00'
-    end_time = '2020-05-01 00:00:00'
+    end_time = '2020-04-30 23:59:59'
     start_time = datetime.strptime(start_time, '%Y-%m-%d %H:%M:%S')  # 改str类型为datetime.datetime类型
     end_time = datetime.strptime(end_time, '%Y-%m-%d %H:%M:%S')  # 改str类型为datetime.datetime类型
     n_dt=timecha(end_time, start_time)
