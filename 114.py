@@ -56,9 +56,9 @@ def read_each_huati(path_base):
 
             # 求每个话题的持续时间Tj
             with open(path, 'r', encoding='utf-8') as csvfile:
-                reader = csv.reader(csvfile)
-                mod_times = [row[3] for row in reader]  # 提取每一行的时间
-            mod_times = [datetime.strptime(x, r"%Y-%m-%d %H:%M:%S") for x in mod_times[1:]]
+                reader = csv.DictReader(csvfile)
+                mod_times = [row['createAt'] for row in reader]  # 提取每一行的时间
+            mod_times = [datetime.strptime(x, r"%Y-%m-%d %H:%M:%S") for x in mod_times]
             max_time = max(mod_times)  # 该话题的结束时间
             min_time = min(mod_times)  # 该话题的开始时间
             T = timecha(max_time, min_time)   # 该话题的持续时间
@@ -217,7 +217,7 @@ def main():
     norm_influ_result = list(result)  # ln(x)/ln(max) 话题影响力归一化
 
     norm_influ_result = [i * 100 for i in norm_influ_result]
-    print(norm_influ_result)  # ln(x)/ln(max) 话题影响力归一化,乘以100
+    print(norm_influ_result)  # l话题影响力归一化,乘以100
 
     # 将每个话题的对应结果存入列表
     for i in range(len(norm_influ_result)):
