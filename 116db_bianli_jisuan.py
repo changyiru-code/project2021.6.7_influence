@@ -1,14 +1,14 @@
-# # 模型第三步，读取csv文件，运行公式模型，修改输出结果格式为字典，进行归一化
+# # 模型第三步，读取mongodb数据库，遍历读取集合下面的全部话题,运行公式模型，修改输出结果格式为字典，进行归一化
 # 读取测试数据，验证模型
 # 整理代码，使代码逻辑清晰
 import os
-import pandas as pd
 import copy
 import csv
+from pymongo import MongoClient
+import pandas as pd
 import numpy as np
 from datetime import datetime
 import json
-
 
 # 计算时间差的函数
 def timecha(time1, time2):
