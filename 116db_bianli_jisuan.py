@@ -60,14 +60,14 @@ def timecha(time1, time2):
 
 
 # 读取数据库，获得转发，评论数；微博文章数；持续时间；时间单元数差；爬虫起止时间
-def read_event(data_list, tid_list):
+def read_event(data_list):
     li_all = []  # 存放每个话题的全部转发，评论数
     li_count = []  # 存放每个话题里的微博文章数Mj
     li_T = []  # 话题持续时间Tj
     li_dt = []  # 当前时间与话题首次发布时间的时间单元数差det(tj)
     li_starttime = []   # 每个事件的开始时间
     li_endtime = []   # 每个事件的结束时间
-    for data, tid in zip(data_list, tid_list):
+    for data in data_list:
         # 1读取数据
         df1 = pd.DataFrame(data)  # 读取集合的全部数据
         df2 = df1[['repostsCount', 'commentsCount']]  # 只提取转发和评论
@@ -77,7 +77,6 @@ def read_event(data_list, tid_list):
         # print(ylist_sum)
         li_ylist_sum = ylist_sum.values.tolist()  # 将dataframe类型的值转换成列表
         li = []
-        li.append(tid)
         li.extend(li_ylist_sum)
         li_all.append(li)
         print(li_all)  # li_all存放每个话题的全部转发，评论数
@@ -180,7 +179,7 @@ def main():
     # print('topic id: ', tid_list)
 
     # 1、读取数据集的基本路径下的每一个话题csv文件，计算每个话题的总转发，总评论，存入huati1.csv文件
-    li_all, li_count, li_T, M, li_dt, n_dt = read_event(data_list, tid_list)    #
+    li_all, li_count, li_T, M, li_dt, n_dt = read_event(data_list)    #
     print(li_all)  # 事件的全部转发和评论数
     print(li_count)  # [24, 32, 21]每个话题里的微博文章数Mj
     print(li_T)  # [448, 448, 464]话题持续时间Tj
@@ -223,12 +222,10 @@ def main():
 
     # #  2、读取li_all的转发数和评论数，利用熵权法计算每个话题转发，评论对话题影响力的贡献值
     # # 1读取数据
-    repose_comment = pd.DataFrame(li_all, columns=['话题', '该话题总转发数', '该话题总评论数'])
+    repose_comment = pd.DataFrame(li_all, columns=['该话题总转发数', '该话题总评论数'])
     print(repose_comment)
     # 2数据预处理 ,去除空值的记录
     repose_comment.dropna()
-    # 去掉“话题”这个指标
-    repose_comment.drop(columns="话题", axis=1, inplace=True)
     score = cal_weight(repose_comment)
     print(score)
 
