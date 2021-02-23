@@ -1,5 +1,5 @@
-# # 模型第三步，读取mongodb数据库，遍历读取集合下面的全部话题,时间以天为单位，运行公式模型，同时计算多个话题影响力，修改输出结果格式为字典，进行归一化
-#与114的区别是一个读CSV文件，一个读数据库
+# # 模型第三步，读取mongodb数据库，遍历读取集合下面的全部话题,运行公式模型，同时计算多个话题影响力，修改输出结果格式为字典，进行归一化
+#与116的区别是116时间以天为单位，117时间以时为单位
 # 读取测试数据，验证模型
 # 整理代码，使代码逻辑清晰
 import os
@@ -50,11 +50,13 @@ def timecha(time1, time2):
     diff_sec = (time1 - time2).seconds
     m, s = divmod(diff_sec, 60)  # 时间差是diff_day天h时m分s秒
     h, m = divmod(m, 60)
-    if (diff_day == 0 and (h != 0 or m != 0 or s != 0)) or h > 12:
-        T = diff_day + 1   # 如果时间差超过12小时，则按一天算，不足12时不按一天算
+    h_cha = diff_day * 24 + h   # 时间差，以时为单位
+    print(h_cha)
+    if (h == 0 and (m != 0 or s != 0)) or m > 30:
+        T = h_cha + 1   # 如果时间差超过12小时，则按一天算，不足12时不按一天算
         print(T)  # 时间单元数差
     else:
-        T = diff_day
+        T = h_cha
         print("时间差", T)  # 时间单元数差
     return T
 
