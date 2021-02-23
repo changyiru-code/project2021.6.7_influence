@@ -16,6 +16,8 @@ path='D:\my_file\研究生期间的资料\影响力评价模型-参考论文\司
 # print(mod_times)
 # for x in mod_times[1:]:
 #     print(x)
+
+
 with open(path, 'r', encoding='utf-8') as csvfile:
     reader = csv.DictReader(csvfile)
     mod_times = [row['createAt'] for row in reader]

@@ -10,6 +10,39 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 import json
+import re
+
+
+# 创建连接MongoDB数据库函数
+def connection():
+    # 1:账号密码方式连接本地MongoDB数据库服务 | "mongodb://用户名:密码@公网ip:端口/"
+    conn = MongoClient("mongodb://root:19980529@127.0.0.1:27017/")  # 用户名、密码可修改
+    # 2:连接本地数据库(influence)和集合
+    db = conn["influence"]
+
+    col_names = db.list_collection_names(session=None)  # pymongo获取指定数据库的集合名称
+    # print(col_names)
+
+    data_list = []
+    tid_list = []
+    for title in col_names:
+        # print(title)
+        # 获取集合里的数据
+        collection = db[title]
+        data = collection.find()
+        data = list(data)  # 在转换成列表时，可以根据情况只过滤出需要的数据。(for遍历过滤)
+        # print(data)
+        data_list.append(data)
+
+        # 获取集合里的话题id
+        num = re.compile(r'\d')
+        tid = num.search(title).group()
+        # print(tid)
+        tid_list.append(tid)
+    tid_list = [int(x) for x in tid_list]
+    return data_list, tid_list
+
+
 
 # 计算时间差的函数
 def timecha(time1, time2):
@@ -26,80 +59,72 @@ def timecha(time1, time2):
     return T
 
 
-# 读取每个csv文件，获得转发，评论数；微博文章数；持续时间；时间单元数差；爬虫起止时间
-def read_each_huati(path_base):
-    p = os.walk(path_base)  # 数据集文件夹路径
+# 读取数据库，获得转发，评论数；微博文章数；持续时间；时间单元数差；爬虫起止时间
+def read_event(data_list, tid_list):
     li_all = []  # 存放每个话题的全部转发，评论数
     li_count = []  # 存放每个话题里的微博文章数Mj
     li_T = []  # 话题持续时间Tj
     li_dt = []  # 当前时间与话题首次发布时间的时间单元数差det(tj)
     li_starttime = []   # 每个事件的开始时间
     li_endtime = []   # 每个事件的结束时间
-    count = 1
-    for path, dir_list, file_list in p:
-        for file_name in file_list:
-            path = os.path.join(path_base, file_name)
-            path = path.replace("\\", "\\\\")
+    for data, tid in zip(data_list, tid_list):
+        # 1读取数据
+        df1 = pd.DataFrame(data)  # 读取集合的全部数据
+        df2 = df1[['repostsCount', 'commentsCount']]  # 只提取转发和评论
+        # df2 = df2.apply(pd.to_numeric)  # 如果转发和评论是object类型求和结果为inf,则去掉该句注释，转化数据类型为数值型
+        # print(df2)
+        ylist_sum = df2.sum(axis=0)
+        # print(ylist_sum)
+        li_ylist_sum = ylist_sum.values.tolist()  # 将dataframe类型的值转换成列表
+        li = []
+        li.append(tid)
+        li.extend(li_ylist_sum)
+        li_all.append(li)
+        print(li_all)  # li_all存放每个话题的全部转发，评论数
 
-            # 1读取数据
-            df1 = pd.read_csv(path, usecols=['repostsCount', 'commentsCount'], encoding='utf-8')
-            ylist_sum = df1.sum(axis=0)
-            li_ylist_sum = ylist_sum.values.tolist()  # 将dataframe类型的值转换成列表
-            li = []
-            li.append(count)
-            li.extend(li_ylist_sum)
-            li_all.append(li)
-            count = count + 1
+        # 2求每个话题的文章个数Mj
+        rows = df1.index.size  # 行数
+        li_count.append(rows)
+        print(li_count)  # li_all存放每个话题的全部转发，评论数
 
-            # 求每个话题的文章个数Mj
-            rows = df1.index.size  # 行数
-            li_count.append(rows)
 
-            # 求每个话题的持续时间Tj
-            with open(path, 'r', encoding='utf-8') as csvfile:
-                reader = csv.DictReader(csvfile)
-                mod_times = [row['createAt'] for row in reader]  # 提取每一行的时间
-            mod_times = [datetime.strptime(x, r"%Y-%m-%d %H:%M:%S") for x in mod_times]
-            max_time = max(mod_times)  # 该话题的结束时间
-            min_time = min(mod_times)  # 该话题的开始时间
-            T = timecha(max_time, min_time)   # 该话题的持续时间
-            li_T.append(T)
+        # 3求每个话题的持续时间Tj
+        mod_times = df1['createAt']  # 提取每一行的时间
+        print(mod_times.tolist())
+        mod_times = [datetime.strptime(x, r"%Y-%m-%d %H:%M:%S") for x in mod_times]
+        max_time = max(mod_times)  # 该话题的结束时间
+        min_time = min(mod_times)  # 该话题的开始时间
+        T = timecha(max_time, min_time)   # 该话题的持续时间
+        li_T.append(T)
+        print(li_T)
 
-            # 定义爬虫的起止时间
-            li_starttime.append(min_time)
-            li_endtime.append(max_time)
 
-            # 获取当地时间,格式化成2016-03-20 11:45:39形式,获得当前时间与话题首次发布时间的时间单元数差
-            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # 获取当地时间
-            now = datetime.strptime(now, '%Y-%m-%d %H:%M:%S')  # 改str类型为datetime.datetime类型
-            dt = timecha(now, min_time)
-            li_dt.append(dt)
+        # 4定义爬虫的起止时间
+        li_starttime.append(min_time)
+        li_endtime.append(max_time)
 
-        # 计算爬虫的起止时间
-        end_time = max(li_endtime)  # 每个事件结束时间的最大值，得到爬虫的结束时间
-        start_time = min(li_starttime)  # 每个事件开始时间的最小值，得到爬虫的开始时间
-        n_dt = timecha(end_time, start_time)   # 爬虫的起止时间
-
-        print(n_dt)  # 爬虫的起止时间
-        print(li_all)  # [[1, 2290, 2280, 2155], [2, 3060, 2898, 2782], [3, 2021, 2041, 1855]]
-        print(li_count)  # [24, 32, 21]
-        print(li_T)  # [448, 448, 464]
-        M = sum(li_count)
-        print(M)  # 所有话题的全部文章数
+        # 5获取当地时间,格式化成2016-03-20 11:45:39形式,获得当前时间与话题首次发布时间的时间单元数差
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # 获取当地时间
+        now = datetime.strptime(now, '%Y-%m-%d %H:%M:%S')  # 改str类型为datetime.datetime类型
+        dt = timecha(now, min_time)
+        li_dt.append(dt)
         print(li_dt)
 
-    # 将话题的赞和转发数存入csv文件
-    huaticsv_path = 'huati1.csv'
-    f = open(huaticsv_path, 'w')
-    f.truncate()  # 清空文件
-    f.close()  # 清空后关闭文件
-    # 以追加方式打开文件并存入
-    with open(huaticsv_path, "a", encoding='utf-8', newline='') as csvfile:  # 写csv文件表头
-        writer = csv.writer(csvfile)
-        writer.writerow(['话题', '该话题总转发数', '该话题总评论数'])
-        for li in li_all:
-            writer.writerow(li)
-    return li_count, li_T, M, li_dt, huaticsv_path, n_dt
+
+    # 计算爬虫的起止时间
+    end_time = max(li_endtime)  # 每个事件结束时间的最大值，得到爬虫的结束时间
+    start_time = min(li_starttime)  # 每个事件开始时间的最小值，得到爬虫的开始时间
+    n_dt = timecha(end_time, start_time)   # 爬虫的起止时间
+
+    print(n_dt)  # 爬虫的起止时间
+    print(li_all)  # [[1, 2290, 2280, 2155], [2, 3060, 2898, 2782], [3, 2021, 2041, 1855]]
+    print(li_count)  # [24, 32, 21]
+    print(li_T)  # [448, 448, 464]
+    M = sum(li_count)
+    print(M)  # 所有话题的全部文章数
+    print(li_dt)
+    #
+    return li_all, li_count, li_T, M, li_dt, n_dt
 
 
 # 定义熵值法函数
@@ -149,13 +174,14 @@ def normalize(count_result):
 
 
 def main():
-
-    # 数据集的基本路径,可根据情况修改
-    path_base = 'D:\my_file\研究生期间的资料\影响力评价模型-参考论文\司法案件影响力评估-项目\data-all\data-all\status\status-by-keyword'
+    # 连接数据库，得到集合数据
+    data_list, tid_list = connection()
+    # print(data_list)    #
+    # print('topic id: ', tid_list)
 
     # 1、读取数据集的基本路径下的每一个话题csv文件，计算每个话题的总转发，总评论，存入huati1.csv文件
-    li_count, li_T, M, li_dt, huaticsv_path, n_dt = read_each_huati(path_base)
-
+    li_all, li_count, li_T, M, li_dt, n_dt = read_event(data_list, tid_list)    #
+    print(li_all)  # 事件的全部转发和评论数
     print(li_count)  # [24, 32, 21]每个话题里的微博文章数Mj
     print(li_T)  # [448, 448, 464]话题持续时间Tj
     print(M)  # 所有话题的全部文章数
@@ -195,14 +221,15 @@ def main():
     norm_persist_result=normalize(n_result)  # 归一化持久度值
     print(norm_persist_result)
 
-    #  2、读取huati1.csv文件，利用熵权法计算每个话题转发，评论对话题影响力的贡献值
-    # 1读取数据
-    df = pd.read_csv((huaticsv_path).replace("\\", "\\\\"), encoding='utf-8')
+    # #  2、读取li_all的转发数和评论数，利用熵权法计算每个话题转发，评论对话题影响力的贡献值
+    # # 1读取数据
+    repose_comment = pd.DataFrame(li_all, columns=['话题', '该话题总转发数', '该话题总评论数'])
+    print(repose_comment)
     # 2数据预处理 ,去除空值的记录
-    df.dropna()
+    repose_comment.dropna()
     # 去掉“话题”这个指标
-    df.drop(columns="话题", axis=1, inplace=True)
-    score = cal_weight(df)
+    repose_comment.drop(columns="话题", axis=1, inplace=True)
+    score = cal_weight(repose_comment)
     print(score)
 
     #用户参与度归一化
@@ -231,9 +258,9 @@ def main():
     # 将每个话题的对应结果存入列表
     for i in range(len(norm_influ_result)):
         dict2 = {}
-        dict2["topic"] = m
-        dict2["user_engage"] = user_engage[i]
+        dict2["topic"] = tid_list[i]
         dict2["topic_influence"] = norm_influ_result[i]
+        dict2["user_engage"] = user_engage[i]
         dict2["topic_coverage"] = norm_cover_result[i]
         dict2["topic_activity"] = norm_activity_result[i]
         dict2["topic_novelty"] = norm_novelty_result[i]
@@ -249,6 +276,5 @@ def main():
     result = json.dumps(dict1)  # 将字典转化为json字符串
     print(result)    # json格式
     # d1 = json.loads(j)  # 将json字符串转化为字典
-
 
 main()

@@ -14,7 +14,7 @@ def connection():
     # 1:账号密码方式连接本地MongoDB数据库服务 | "mongodb://用户名:密码@公网ip:端口/"
     conn = MongoClient("mongodb://root:19980529@127.0.0.1:27017/")  # 用户名、密码可修改
     # 2:连接本地数据库(influence)和集合
-    collection = conn["influence"]["keyword1_status"]
+    collection = conn["influence"]["keyword6_status"]
     data = collection.find()
     data = list(data)  # 在转换成列表时，可以根据情况只过滤出需要的数据。(for遍历过滤)
     return data

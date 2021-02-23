@@ -231,8 +231,8 @@ def main():
     for i in range(len(norm_influ_result)):
         dict2 = {}
         dict2["topic"] = m
-        dict2["user_engage"] = user_engage[i]
         dict2["topic_influence"] = norm_influ_result[i]
+        dict2["user_engage"] = user_engage[i]
         dict2["topic_coverage"] = norm_cover_result[i]
         dict2["topic_activity"] = norm_activity_result[i]
         dict2["topic_novelty"] = norm_novelty_result[i]
