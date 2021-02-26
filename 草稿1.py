@@ -145,8 +145,81 @@
 # import requests
 # import json
 #
-# url = 'https://api.github.com/events'
+# url = 'https://api.github.com/events/notice'
+# headers = {'Content-Type': 'application/json;charset=UTF-8'}
+# meg = requests.post(url, headers=headers)
+# # eventNoticeType = meg.json().get("eventNoticeType")
+# # eventState = meg.json().get("eventState")
+# # topicId = meg.json().get("topicId")
 #
-# r = requests.get(url)
-# print(json.loads(r.text))   #r.json()与json.loads(r.text)等效
+# # print(json.loads(r.text))   #r.json()与json.loads(r.text)等效
+# print(meg.json())  #这两个print语句等效
+
+##7
+# import requests
+# import json
+# url = 'http://127.0.0.1:8888/accept'
+# data = {'eventNoticeType': 111, 'eventState': 222}
+#
+# r = requests.post(url, data=json.dumps(data))
 # print(r.json())  #这两个print语句等效
+
+
+# ##8以下代码可以实现 一个HTTP接口供别人调用并post数据，但没法接收post回来的数据
+# from flask import Flask, request, jsonify
+# import json
+# import requests
+# import threading
+#
+# app = Flask(__name__)
+# app.debug = True
+#
+#
+# @app.route('/get/data/', methods=['post'])
+# def add_stu():
+#     if not request.data:  # 检测是否有数据
+#         return ('fail')
+#     student = request.data.decode('utf-8')
+#     # 获取到POST过来的数据，因为我这里传过来的数据需要转换一下编码。根据晶具体情况而定
+#     student_json = json.loads(student)
+#     # 把区获取到的数据转为JSON格式。
+#     print(student_json)
+#
+#     return jsonify(student_json)
+#     # 返回JSON数据。
+#
+#
+# if __name__ == '__main__':
+#     app.run(host='127.0.0.1', port=1234)
+#     # 这里指定了地址和端口号。
+
+
+# # 9\coding:utf-8
+#
+# import json
+# from wsgiref.simple_server import make_server
+# import urllib.parse
+# import re
+#
+#
+# # 定义函数，参数是函数的两个参数，都是python本身定义的，默认就行了。
+# def application(environ, start_response):
+#     # 定义文件请求的类型和当前请求成功的code
+#     start_response('200 OK', [('Content-Type', 'application/json')])
+#     # environ是当前请求的所有数据，包括Header和URL，body
+#
+#     request_body = environ["wsgi.input"].read(int(environ.get("CONTENT_LENGTH", 0)))
+#
+#     json_str = request_body.decode('utf-8')  # byte 转 str
+#     json_str = re.sub('\'', '\"', json_str)  # 单引号转双引号, json.loads 必须使用双引号
+#     json_dict = json.loads(json_str)  # （注意：key值必须双引号）
+#     print(json_dict["name"])
+#
+#     return [json.dumps(json_dict)]
+#
+#
+# if __name__ == "__main__":
+#     port = 6088
+#     httpd = make_server("0.0.0.0", port, application)
+#     print("serving http on port {0}...".format(str(port)))
+#     httpd.serve_forever()
