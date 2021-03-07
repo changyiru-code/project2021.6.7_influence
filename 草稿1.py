@@ -223,3 +223,39 @@
 #     httpd = make_server("0.0.0.0", port, application)
 #     print("serving http on port {0}...".format(str(port)))
 #     httpd.serve_forever()
+
+
+import json
+from flask import Flask, request, jsonify
+app = Flask(__name__)
+app.debug = True
+
+def getdata_fromdb_by_id(topicId):
+    print(topicId)
+# 1、消息服务接口,接收数据导入成功的通知
+# 接收消息
+@app.route('/notice', methods=['post'])  # url = 'http://127.0.0.1:8088/notice',请求方式post
+def add_stu():
+    if not request.data:  # 检测是否有数据
+        return ('fail')
+    data = request.data.decode('utf-8')
+    # 获取到POST过来的数据，因为我这里传过来的数据需要转换一下编码。根据具体情况而定
+    data_json = json.loads(data)
+    # 把区获取到的数据转为JSON格式。
+    print(data_json)
+    eventNoticeType = data_json["eventNoticeType"]  # 获取通知消息类型说明：SOCIAL_INFLUENCE为社会影响力效能评估
+    eventState = data_json["eventState"]  # 获取消息服务状态说明：SUCCESSFUL为执行成功并已完成
+    topicId = data_json["topicId"]  # 获取关联主题id
+    if eventNoticeType == 'SOCIAL_INFLUENCE' and eventState == 'SUCCESSFUL':
+        getdata_fromdb_by_id(topicId)  # 如果接收到 数据全部入库 的消息，则根据通知接口拿到的事件ID（topicId）去调用接口3.2.1.3，获取我们需要的数据
+
+    return jsonify(data_json)
+    # 返回JSON数据。
+
+# 创建主函数
+if __name__ == '__main__':
+    # 1：消息服务接口,接收数据导入成功的通知:接口
+    app.run(host='0.0.0.0', port=8088)    # url = 'http://127.0.0.1:8088/notice'
+    # 这里指定了地址和端口号。
+    # timer = threading.Timer(5, do_job)
+    # timer.start()

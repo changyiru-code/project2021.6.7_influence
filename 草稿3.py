@@ -86,12 +86,6 @@
 # if __name__ == '__main__':
 #     server.run(debug=True, port=8888, host='0.0.0.0')  # 指定端口、host,0.0.0.0代表不管几个网卡，任何ip都可以访问
 #
-import time
-from datetime import datetime
-time1=time.time()
-print(int(time1))
-dt = datetime.fromtimestamp(int(time1))
-dt = dt.strftime('%Y-%m-%d %H:%M:%S')
-print(dt)
-dt = datetime.fromtimestamp(time1).strftime('%Y-%m-%d %H:%M:%S')
-print(dt.type())
+
+li_count=[1375, 86, 36, 21, 149, 34]
+print([e_result+1 for e_result in li_count])

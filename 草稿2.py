@@ -21,17 +21,15 @@
 
 
 
-# ##2
-# import requests, json
-#
-# data = {
-#     'id': 1,
-#     'name': 'lily',
-#     'age': 12,
-#     'birthplace': 'san',
-#     'grade': 123
-# }
-# url = 'http://127.0.0.1:1234/get/data/'
-#
-# requests.post(url, data=json.dumps(data))
-#
+##2
+import requests, json
+
+data = {
+    'eventNoticeType': 'SOCIAL_INFLUENCE',
+    'eventState': 'SUCCESSFUL',
+    'topicId': 1,
+}
+url = 'http://127.0.0.1:8088/notice'
+
+r=requests.post(url, data=json.dumps(data))
+print(r.text)

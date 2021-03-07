@@ -117,7 +117,7 @@ def send_message_api(eventNoticeType, eventState, db_name, collection_name):  # 
 # 通过ID读数据库数据
 def getdata_fromdb_by_id(topicId):
     BasePath = 'https://api.antdu.com/jw/'
-    url = BasePath + 'data/douments'
+    url = BasePath + 'data/douments'   # https://api.antdu.com/jw/data/douments
     time1 = int(time.time())
     data = {"topicId": topicId, "endTime": time1, "count": 100}
     # 向数据库发送请求获取数据
@@ -151,7 +151,7 @@ def getdata_fromdb_by_id(topicId):
 
 # 1、消息服务接口,接收数据导入成功的通知
 # 接收消息
-@app.route('/get/data/', methods=['post'])  # url = 'http://127.0.0.1:1234/get/data/',请求方式post
+@app.route('/notice', methods=['post'])  # url = 'http://127.0.0.1:8088/notice',请求方式post
 def add_stu():
     if not request.data:  # 检测是否有数据
         return ('fail')
@@ -173,7 +173,7 @@ def add_stu():
 # 创建主函数
 if __name__ == '__main__':
     # 1：消息服务接口,接收数据导入成功的通知:接口
-    app.run(host='127.0.0.1', port=1234)    # url = 'http://127.0.0.1:1234/get/data/'
+    app.run(host='127.0.0.1', port=8088)    # url = 'http://127.0.0.1:8088/notice'
     # 这里指定了地址和端口号。
     # timer = threading.Timer(5, do_job)
     # timer.start()

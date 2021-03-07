@@ -32,7 +32,9 @@ def connection():
         tid = num.search(title).group()
         tid_list.append(tid)
     tid_list = [int(x) for x in tid_list]
-    return data_list, tid_list
+    # return data_list, tid_list
+    print(data_list)   # [[{},{},...], [{},{},...], [{},{},...]]
+    print(tid_list)
 
 
 # 计算时间差的函数
@@ -211,14 +213,14 @@ def main():
     # 2：连接数据库，得到集合数据，数据库访问接口，要改接口
     # 收到通知后，以事件id作为参数调用提供的一个事件关联数据查询接口翻页查询事件关联的数据进行事件影响力分析。
     # 怎么通过id访问，目前是通过数据库名和集合名读取数据
-    data_list, tid_list = connection()
-
-    # 3：影响力计算
-    dict1 = event_influ_calcu(data_list, tid_list)    #
-
-    # 4：将计算结果存入数据库
-    save_to_db(dict1)
-    # 5：消息服务接口,通知计算完成，给出存数据的数据库名和集合名，没写
+    # data_list, tid_list = connection()
+    connection()
+    # # 3：影响力计算
+    # dict1 = event_influ_calcu(data_list, tid_list)    #
+    #
+    # # 4：将计算结果存入数据库
+    # save_to_db(dict1)
+    # # 5：消息服务接口,通知计算完成，给出存数据的数据库名和集合名，没写
 
 
 main()
