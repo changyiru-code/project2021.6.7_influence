@@ -87,5 +87,3 @@
 #     server.run(debug=True, port=8888, host='0.0.0.0')  # 指定端口、host,0.0.0.0代表不管几个网卡，任何ip都可以访问
 #
 
-li_count=[1375, 86, 36, 21, 149, 34]
-print([e_result+1 for e_result in li_count])

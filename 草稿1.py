@@ -226,36 +226,52 @@
 
 
 import json
+import logging
 from flask import Flask, request, jsonify
+
+logging.basicConfig(level=logging.DEBUG)
+
 app = Flask(__name__)
 app.debug = True
-
+from gevent import pywsgi
 def getdata_fromdb_by_id(topicId):
+    logging.info('成功调用读数据库函数')  # jia
+
     print(topicId)
 # 1、消息服务接口,接收数据导入成功的通知
 # 接收消息
 @app.route('/notice', methods=['post'])  # url = 'http://127.0.0.1:8088/notice',请求方式post
 def add_stu():
-    if not request.data:  # 检测是否有数据
-        return ('fail')
-    data = request.data.decode('utf-8')
-    # 获取到POST过来的数据，因为我这里传过来的数据需要转换一下编码。根据具体情况而定
-    data_json = json.loads(data)
-    # 把区获取到的数据转为JSON格式。
-    print(data_json)
-    eventNoticeType = data_json["eventNoticeType"]  # 获取通知消息类型说明：SOCIAL_INFLUENCE为社会影响力效能评估
-    eventState = data_json["eventState"]  # 获取消息服务状态说明：SUCCESSFUL为执行成功并已完成
-    topicId = data_json["topicId"]  # 获取关联主题id
-    if eventNoticeType == 'SOCIAL_INFLUENCE' and eventState == 'SUCCESSFUL':
-        getdata_fromdb_by_id(topicId)  # 如果接收到 数据全部入库 的消息，则根据通知接口拿到的事件ID（topicId）去调用接口3.2.1.3，获取我们需要的数据
+    try:
+        logging.info('接口被调用成功')  # jia
+        if not request.data:  # 检测是否有数据
+            logging.info('未检测到数据')  # jia
+            return ('fail')
+        data = request.data.decode('utf-8')
+        # 获取到POST过来的数据，因为我这里传过来的数据需要转换一下编码。根据具体情况而定
+        data_json = json.loads(data)
+        # 把区获取到的数据转为JSON格式。
+        logging.info('接收到的数据：%s', data_json)
+        # print(data_json)
+        eventNoticeType = data_json["eventNoticeType"]  # 获取通知消息类型说明：SOCIAL_INFLUENCE为社会影响力效能评估
+        eventState = data_json["eventState"]  # 获取消息服务状态说明：SUCCESSFUL为执行成功并已完成
+        topicId = data_json["topicId"]  # 获取关联主题id
+        if eventNoticeType == 'SOCIAL_INFLUENCE' and eventState == 'SUCCESSFUL':
+            logging.info('调用读数据库函数')  # jia
+            getdata_fromdb_by_id(topicId)  # 如果接收到 数据全部入库 的消息，则根据通知接口拿到的事件ID（topicId）去调用接口3.2.1.3，获取我们需要的数据
 
-    return jsonify(data_json)
-    # 返回JSON数据。
+        return jsonify(data_json)
+        # 返回JSON数据。
+    except Exception as e:
+        logging.error("接口被调用失败：%s" % e)
+
 
 # 创建主函数
 if __name__ == '__main__':
     # 1：消息服务接口,接收数据导入成功的通知:接口
-    app.run(host='0.0.0.0', port=8088)    # url = 'http://127.0.0.1:8088/notice'
+    # app.run(host='0.0.0.0', port=8088)    # url = 'http://127.0.0.1:8088/notice'
+    server = pywsgi.WSGIServer(('0.0.0.0', 8088), app)
+    server.serve_forever()
     # 这里指定了地址和端口号。
     # timer = threading.Timer(5, do_job)
     # timer.start()
