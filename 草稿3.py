@@ -87,3 +87,20 @@
 #     server.run(debug=True, port=8888, host='0.0.0.0')  # 指定端口、host,0.0.0.0代表不管几个网卡，任何ip都可以访问
 #
 
+import json
+import requests
+
+
+request_param = {
+    'topic': 'ff557982-43d8-4256-a256-0d0854ef114a',
+    'startTime': 161509171955,
+    'endTime': 1615523719551,
+    'count': 80
+}
+r = requests.get('https://api.antdu.com/jw/data/documents', params = request_param)
+print(r.url)                       #获取请求内容
+print(r.text)                      #获取响应内容
+data = json.loads(r.text)
+numFound = data["numFound"]  # 事件数据库里一共有这么多条数据，根据该数据判断要读多少次
+print(numFound)
+print(data)

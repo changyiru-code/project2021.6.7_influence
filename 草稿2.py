@@ -27,7 +27,7 @@ import requests, json
 data = {
     'eventNoticeType': 'SOCIAL_INFLUENCE',
     'eventState': 'SUCCESSFUL',
-    'topicId': 1,
+    'topicId': 'ff557982-43d8-4256-a256-0d0854ef114a',
 }
 url = 'http://127.0.0.1:8088/notice'
 

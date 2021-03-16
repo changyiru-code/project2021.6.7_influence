@@ -129,14 +129,14 @@ def send_message_api(eventNoticeType, eventState, db_name, collection_name):  # 
 def getdata_fromdb_by_id(topicId):
     logging.info('成功调用读数据库函数')  # jia
     BasePath = 'https://api.antdu.com/jw/'
-    url = BasePath + 'data/douments'   # https://api.antdu.com/jw/data/douments
+    url = BasePath + 'data/documents'   # https://api.antdu.com/jw/data/documents
     logging.info('输出数据库接口链接: %s', url)  # jia
     time1 = int(time.time())
-    data = {"topicId": topicId, "endTime": time1, "count": 100}
+    data = {"topic": topicId, "endTime": time1, "count": 100}
     logging.info('向数据库发送请求获取数据')  # jia
     # 向数据库发送请求获取数据
     try:
-        c = 1
+        c = 1  # jia
         data = requests.get(url, params=data)
         data = json.loads(data)
         logging.info("数据库第 %s 次请求成功", c)  # jia
@@ -146,7 +146,7 @@ def getdata_fromdb_by_id(topicId):
         endTime = result_list[-1]["createdAt"]
         count = 100
         for i in range(int(numFound / count)):  # 读事件库的全部数据存到result_list列表里
-            c += 1
+            c += 1  # jia
             data2 = {"topicId": topicId, "endTime": endTime, "count": count}
             data2 = requests.get(url, params=data2)
             data2 = json.loads(data2)
@@ -170,9 +170,9 @@ def getdata_fromdb_by_id(topicId):
         send_message_api('SOCIAL_INFLUENCE', 'SUCCESSFUL', db_name, collection_name)
 
     except Exception as e:
-        logging.error("数据库请求异常：%s" % e)
-        data = None
-    return data
+        logging.error("数据库请求异常：%s" % e)  # gai
+        # data = None
+        # return data
 
 
 # 1、消息服务接口,接收数据导入成功的通知
