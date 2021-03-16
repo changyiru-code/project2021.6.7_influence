@@ -347,7 +347,7 @@ def save_to_db(dict1):
         db.insert_one(dict1)
         return "SOCIAL_ATTENTION", "social_influence"
     except Exception as e:   # jia
-        logging.error("数据库连接失败：%s" % e)   # jia
+        logging.error("数据存入数据库失败：%s" % e)   # jia
 
     # 5：消息服务接口,通知计算完成，给出存数据的数据库名和集合名，没写
 def send_message_api(eventNoticeType, eventState, db_name, collection_name):  # eventNoticeType:通知消息类型说明,值为SOCIAL_INFLUENCE表示社会影响力效能评估；eventState：消息服务状态说明，值为SUCCESSFUL表示执行成功并已完成
@@ -370,7 +370,9 @@ def getdata_fromdb_by_id(topicId):
     url = BasePath + 'data/documents'   # https://api.antdu.com/jw/data/documents
     logging.info('输出数据库接口链接: %s', url)  # jia
     endTime = int(round(time.time() * 1000))
-    startTime = endTime-86400
+    startTime = endTime-86700   # 86400是往前一天，为避免前面调数据有时延，时间往前5分钟
+    # startTime = 161509171800
+    # endTime = 1615523719551  # 这两个时间是测试时间
     # data = {"topic": topicId, 'startTime': 161509171955, "endTime": time1, "count": 100}
     data = {
         'topic': topicId,
@@ -388,6 +390,7 @@ def getdata_fromdb_by_id(topicId):
         logging.info("数据库第 %s 次请求成功", c)  # jia
         # print(data)
         numFound = data["numFound"]  # 事件数据库里一共有这么多条数据，根据该数据判断要读多少次
+        print(numFound)
         result_list = data["result"]  # 该列表里存放字典，一个字典代表一条数据
         # print(len(result_list))
         endTime = result_list[-1]["createdAt"]
@@ -397,7 +400,7 @@ def getdata_fromdb_by_id(topicId):
         # print(result_list)
         for i in range(int(numFound / count)):  # 读事件库的全部数据存到result_list列表里
             c += 1  # jia
-            data2 = {"topic": topicId, 'startTime': 161509171955, "endTime": endTime, "count": count}
+            data2 = {"topic": topicId, 'startTime': startTime, "endTime": endTime, "count": count}
             data2 = requests.get(url, params=data2)
             # print("data2.url:", data2.url)
             data2 = json.loads(data2.text)
@@ -408,21 +411,21 @@ def getdata_fromdb_by_id(topicId):
             result_list = result_list + data2["result"][1:]  # 该列表里存放字典，一个字典代表一条数据
             # print(len(result_list))
             endTime = result_list[-1]["createdAt"]
+        print(len(result_list))
         logging.info("数据库数据读取完毕,接下来是影响力计算")  # jia
 
         # 3：影响力计算
         dict1 = event_influence_calculate(result_list)
+        logging.info("影响力计算结束，数据输出")  # jia
         print(dict1)
-        # logging.info("影响力计算结束，数据输出如下")  # jia
-        # print(dict1)
-        #
-        # # 4：将计算结果存入数据库
-        # logging.info("数据准备存入数据库...")  # jia
-        # db_name, collection_name = save_to_db(dict1)
-        # logging.info("数据已全部存入数据库,准备连接并通知消息服务，计算完成")  # jia
-        #
-        # # 5：消息服务接口,通知计算完成,给出存数据的数据库名和集合名:接口
-        # send_message_api('SOCIAL_INFLUENCE', 'SUCCESSFUL', db_name, collection_name)
+
+        # 4：将计算结果存入数据库
+        logging.info("数据准备存入数据库...")  # jia
+        db_name, collection_name = save_to_db(dict1)
+        logging.info("数据已全部存入数据库,准备连接并通知消息服务，计算完成")  # jia
+
+        # 5：消息服务接口,通知计算完成,给出存数据的数据库名和集合名:接口
+        send_message_api('SOCIAL_INFLUENCE', 'SUCCESSFUL', db_name, collection_name)
 
     except Exception as e:
         logging.error("数据库请求异常：%s" % e)  # gai
