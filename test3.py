@@ -111,36 +111,27 @@ def event_influ_calcu(data):
 def save_to_db(dict1):
     logging.info("连接数据库...")  # jia
     try:   # jia
-        # # 1:账号密码方式连接本地MongoDB数据库服务 | "mongodb://用户名:密码@公网ip:端口/"
-        # conn = MongoClient("mongodb://SOCIAL_ATTENTION:EF_KD_BJD-!24@10.20.2.181:28018/")  # 用户名、密码可修改
-        # # 2:连接本地分析结果数据库(SOCIAL_ATTENTION)和集合(social_influence)
-        # db = conn["SOCIAL_ATTENTION"]["social_influence"]
-
-        # 数据库有密码认证的话要用下面的连接方式
-        conn = MongoClient("mongodb://10.20.2.181:28018/")
-        mydb = conn["SOCIAL_ATTENTION"]  # SOCIAL_ATTENTION是数据库名称
-        mydb.authenticate('SOCIAL_ATTENTION', 'EF_KD_BJD-!24')
-        db = mydb["social_influence"]  # social_influence是数据库的中一个数据表
-
-
+        # 1:账号密码方式连接本地MongoDB数据库服务 | "mongodb://用户名:密码@公网ip:端口/"
+        conn = MongoClient("mongodb://root:19980529@127.0.0.1:27017/")  # 用户名、密码可修改
+        # 2:连接本地分析结果数据库(SOCIAL_ATTENTION)和集合(social_influence)
+        db = conn["influence_result"]["event_influence1"]
         logging.info("数据库连接成功")  # jia
         db.insert_one(dict1)
         return "SOCIAL_ATTENTION", "social_influence"
     except Exception as e:   # jia
         logging.error("数据库连接失败：%s" % e)   # jia
 
-    # 5：消息服务接口,通知计算完成，给出存数据的数据库名和集合名，
-def send_message_api(eventNoticeType, eventState, db_name, collection_name, topicId):  # jia2 eventNoticeType:通知消息类型说明,值为SOCIAL_INFLUENCE表示社会影响力效能评估；eventState：消息服务状态说明，值为SUCCESSFUL表示执行成功并已完成
+    # 5：消息服务接口,通知计算完成，给出存数据的数据库名和集合名，没写
+def send_message_api(eventNoticeType, eventState, db_name, collection_name):  # eventNoticeType:通知消息类型说明,值为SOCIAL_INFLUENCE表示社会影响力效能评估；eventState：消息服务状态说明，值为SUCCESSFUL表示执行成功并已完成
     BasePath = 'https://api.antdu.com/event/'
     url = BasePath+'notice'
     logging.info("消息服务接口链接: %s", url)  # jia
     # 消息头指定,指定utf-8编码
-    # headers = {'Content-Type': 'application/json;charset=UTF-8'}
-    data = {'noticeType': eventNoticeType, 'eventState': eventState, 'db_name': db_name, 'collection_name': collection_name, 'topicId': topicId}
+    headers = {'Content-Type': 'application/json;charset=UTF-8'}
+    data = {'eventNoticeType': eventNoticeType, 'eventState': eventState, 'db_name': db_name, 'collection_name': collection_name}
     try:  # jia
-        r = requests.post(url, data=data)
-        print(r.text)
-        logging.info("成功通知消息服务接口：%s", r.text)  # jia
+        requests.post(url, data=json.dumps(data), headers=headers)
+        logging.error("成功通知消息服务接口：%s")  # jia
     except Exception as e:    # jia
         logging.error("通知消息服务接口失败：%s" % e)  # jia
 
@@ -192,15 +183,14 @@ def getdata_fromdb_by_id(topicId):
         # 3：影响力计算
         dict1 = event_influ_calcu(result_list)
         logging.info("影响力计算结束，数据输出")  # gai1
-        print(dict1)
 
         # 4：将计算结果存入数据库
         logging.info("数据准备存入数据库...")  # jia
         db_name, collection_name = save_to_db(dict1)
         logging.info("数据已全部存入数据库,准备连接并通知消息服务，计算完成")  # jia
 
-        # 5：消息服务接口,通知计算完成,给出存数据的数据库名和集合名:接口
-        send_message_api('SOCIAL_INFLUENCE', 'SUCCESSFUL', db_name, collection_name, topicId)  # jia2
+        # # 5：消息服务接口,通知计算完成,给出存数据的数据库名和集合名:接口
+        # send_message_api('SOCIAL_INFLUENCE', 'SUCCESSFUL', db_name, collection_name)
 
     except Exception as e:
         logging.error("数据库请求异常：%s" % e)  # gai
@@ -214,23 +204,22 @@ def getdata_fromdb_by_id(topicId):
 def add_stu():
     try:  # jia
         logging.info('接口被调用成功')  # jia
-        logging.info('接收到的数据：%s', request.values)    # jia
-        # 获取通过url请求传参的数据
-        eventState = request.values.get('eventState')
-        topicId = request.values.get('topicId')
-        # 判断状态、类型、id都不为空
-        if eventState and topicId:
-            if eventState == 'SUCCESSFUL':
-                logging.info('调用读数据库函数')  # jia
-                getdata_fromdb_by_id(topicId)  # 如果接收到 数据全部入库 的消息，则根据通知接口拿到的事件ID（topicId）去调用接口3.2.1.3，获取我们需要的数据
-                return 'true'
-            else:
-                logging.info('发送的消息不对')  # jia
-                resu = {'code': -1, 'message': '类型或状态不对'}
-                return json.dumps(resu, ensure_ascii=False)
-        else:
-            resu = {'code': 10001, 'message': '未检测到数据or参数不能为空！'}
-            return json.dumps(resu, ensure_ascii=False)
+        if not request.data:  # 检测是否有数据
+            logging.info('未检测到数据')  # jia
+            return ('fail')
+        data = request.data.decode('utf-8')
+        # 获取到POST过来的数据，因为我这里传过来的数据需要转换一下编码。根据具体情况而定
+        data_json = json.loads(data)
+        # 把区获取到的数据转为JSON格式。
+        logging.info('接收到的数据：%s', data_json)    # jia
+        # print(data_json)
+        eventNoticeType = data_json["eventNoticeType"]  # 获取通知消息类型说明：SOCIAL_INFLUENCE为社会影响力效能评估
+        eventState = data_json["eventState"]  # 获取消息服务状态说明：SUCCESSFUL为执行成功并已完成
+        topicId = data_json["topicId"]  # 获取关联主题id
+        if eventNoticeType == 'SOCIAL_INFLUENCE' and eventState == 'SUCCESSFUL':
+            logging.info('调用读数据库函数')  # jia
+            getdata_fromdb_by_id(topicId)  # 如果接收到 数据全部入库 的消息，则根据通知接口拿到的事件ID（topicId）去调用接口3.2.1.3，获取我们需要的数据
+        return jsonify(data_json)
         # 返回JSON数据。
     except Exception as e:  # jia
         logging.error("接口被调用失败：%s" % e)  # jia
