@@ -1,8 +1,11 @@
-"""对social_influence.py的读数据库部分的调试，应该没问题了"""
-# # 模型第三步，读取mongodb数据库，只读取一个事件，时间以时为单位，运行公式模型，计算单独一个事件的影响力，输出结果格式为字典，进行归一化
+"""该代码与2021.6.2docker里调试的代码一样，可直接push，对social_influence.py的读数据库部分的调试，应该没问题了"""
+# # 模型第三步，读取mongodb数据库，只读取一个事件，时间以时为单位（话题持续多少小时），运行公式模型，计算单独一个事件的影响力，输出结果格式为字典，进行归一化
 # 读取数据库里的测试数据，验证模型
 # 存入数据库
-
+"""
+该代码把一个事件当作一个话题，只计算了一个事件的影响力
+将一个事件内的文章聚类出多个话题的代码在social_influence_topic里
+"""
 # 导包
 from pymongo import MongoClient
 import pandas as pd
@@ -34,7 +37,7 @@ def timecha(time1, time2):
 
 
 # 读取事件集合，获得转发，评论数；微博文章数；持续时间；时间单元数差；爬虫起止时间
-def event_influ_calcu(data):
+def event_influ_calcu(data, topicId):
     # 1:读取数据集的事件数据，计算事件的所需内容
     # 1读取数据
     logging.info("读取数据")  # jia1
@@ -78,10 +81,10 @@ def event_influ_calcu(data):
     li_dt_result = 1 / (np.power(li_dt, 0.1))  # (dt+1)^-0.1 计算话题新颖度
     topic_novelty = np.arctan(li_dt_result)*2/np.pi*100  # 归一化新颖度值
 
-    n_result = np.log(li_t+1)  # nu/n改成ln(nu)  计算话题持久度
+    n_result = np.log(li_t+1.01)  # nu/n改成ln(nu)  计算话题持久度
     topic_persistence = np.arctan(n_result)*2/np.pi*100  # 归一化持久度值
 
-    score = np.log(sum(li_all))  #   计算用户参与度
+    score = np.log(sum(li_all)+1.01)  #   计算用户参与度
     user_engage = np.arctan(score)*2/np.pi*100   # 用户参与度归一化
 
     logging.info("计算总公式")  # jia1
@@ -96,6 +99,7 @@ def event_influ_calcu(data):
     logging.info("将每个话题的对应结果存入列表")  # jia1
 
     # 4:将每个话题的对应结果存入列表
+    dict1["case_id"] = topicId
     dict2 = {}
     dict2["topic_influence"] = topic_influence
     dict2["user_engage"] = user_engage
@@ -108,7 +112,7 @@ def event_influ_calcu(data):
     return dict1
 
 
-def save_to_db(dict1):
+def save_to_db(dict1, topicId):
     logging.info("连接数据库...")  # jia
     try:   # jia
         # # 1:账号密码方式连接本地MongoDB数据库服务 | "mongodb://用户名:密码@公网ip:端口/"
@@ -124,7 +128,15 @@ def save_to_db(dict1):
 
 
         logging.info("数据库连接成功")  # jia
-        db.insert_one(dict1)
+        # db.delete_many({})
+        # db.insert_one(dict1)
+        db.update_one(
+            {'case_id': topicId},
+            {'$set':
+                 dict1
+             },
+            upsert=True
+        )
         return "SOCIAL_ATTENTION", "social_influence"
     except Exception as e:   # jia
         logging.error("数据库连接失败：%s" % e)   # jia
@@ -157,6 +169,7 @@ def getdata_fromdb_by_id(topicId):
     logging.info('输出数据库接口链接: %s', url)  # jia
     endTime = int(round(time.time() * 1000))  # jia1
     startTime = 0   # jia1,endTime-86700，86400是往前一天，为避免前面调数据有时延，时间往前5分钟
+    print(endTime)
     # startTime = 161509171800
     # endTime = 1615523719551  # 这两个时间是测试时间
 
@@ -165,6 +178,11 @@ def getdata_fromdb_by_id(topicId):
     # 向数据库发送请求获取数据
     try:
         c = 1  # jia
+
+        requests.DEFAULT_RETRIES = 5  # 增加重试连接次数
+        s = requests.session()
+        s.keep_alive = False  # 关闭多余连接
+
         data = requests.get(url, params=data)
         data = json.loads(data.text)  # gai1
         logging.info("数据库第 %s 次请求成功", c)  # jia
@@ -190,13 +208,13 @@ def getdata_fromdb_by_id(topicId):
         logging.info("数据库数据读取完毕,接下来是影响力计算")  # jia
 
         # 3：影响力计算
-        dict1 = event_influ_calcu(result_list)
+        dict1 = event_influ_calcu(result_list, topicId)
         logging.info("影响力计算结束，数据输出")  # gai1
         print(dict1)
 
         # 4：将计算结果存入数据库
         logging.info("数据准备存入数据库...")  # jia
-        db_name, collection_name = save_to_db(dict1)
+        db_name, collection_name = save_to_db(dict1, topicId)
         logging.info("数据已全部存入数据库,准备连接并通知消息服务，计算完成")  # jia
 
         # 5：消息服务接口,通知计算完成,给出存数据的数据库名和集合名:接口

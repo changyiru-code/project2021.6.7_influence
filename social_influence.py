@@ -181,22 +181,23 @@ def getdata_fromdb_by_id(topicId):
 def add_stu():
     try:  # jia
         logging.info('接口被调用成功')  # jia
-        if not request.data:  # 检测是否有数据
-            logging.info('未检测到数据')  # jia
-            return ('fail')
-        data = request.data.decode('utf-8')
-        # 获取到POST过来的数据，因为我这里传过来的数据需要转换一下编码。根据具体情况而定
-        data_json = json.loads(data)
-        # 把区获取到的数据转为JSON格式。
-        logging.info('接收到的数据：%s', data_json)    # jia
-        # print(data_json)
-        eventNoticeType = data_json["eventNoticeType"]  # 获取通知消息类型说明：SOCIAL_INFLUENCE为社会影响力效能评估
-        eventState = data_json["eventState"]  # 获取消息服务状态说明：SUCCESSFUL为执行成功并已完成
-        topicId = data_json["topicId"]  # 获取关联主题id
-        if eventNoticeType == 'SOCIAL_INFLUENCE' and eventState == 'SUCCESSFUL':
-            logging.info('调用读数据库函数')  # jia
-            getdata_fromdb_by_id(topicId)  # 如果接收到 数据全部入库 的消息，则根据通知接口拿到的事件ID（topicId）去调用接口3.2.1.3，获取我们需要的数据
-        return jsonify(data_json)
+        logging.info('接收到的数据：%s', request.values)    # jia
+        # 获取通过url请求传参的数据
+        eventState = request.values.get('eventState')
+        topicId = request.values.get('topicId')
+        # 判断状态、类型、id都不为空
+        if eventState and topicId:
+            if eventState == 'SUCCESSFUL':
+                logging.info('调用读数据库函数')  # jia
+                getdata_fromdb_by_id(topicId)  # 如果接收到 数据全部入库 的消息，则根据通知接口拿到的事件ID（topicId）去调用接口3.2.1.3，获取我们需要的数据
+                return 'true'
+            else:
+                logging.info('发送的消息不对')  # jia
+                resu = {'code': -1, 'message': '类型或状态不对'}
+                return json.dumps(resu, ensure_ascii=False)
+        else:
+            resu = {'code': 10001, 'message': '未检测到数据or参数不能为空！'}
+            return json.dumps(resu, ensure_ascii=False)
         # 返回JSON数据。
     except Exception as e:  # jia
         logging.error("接口被调用失败：%s" % e)  # jia

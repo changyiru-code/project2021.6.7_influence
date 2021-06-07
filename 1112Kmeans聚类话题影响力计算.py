@@ -2,7 +2,7 @@
 # input: result_list  [{'id':1,'zan':222,...},{'id':2,'zan':22,...},...]
 # output: [[{'id':1,'zan':222,...},{'id':2,'zan':22,...},...], [{'id':1,'zan':222,...},{'id':2,'zan':22,...},...], [{'id':1,'zan':222,...},{'id':2,'zan':22,...},...],...]
 # 分析：先将带有HashTag的文本筛选出来，内容只留下HashTag值，以及需要的字段
-# 'repostsCount', 'commentsCount', 'createdAt'，接着对HashTag的文本分词、向量化、加权、计算余弦相似度、单遍聚类，得到输出
+# 'repostsCount', 'commentsCount', 'createAt'，接着对HashTag的文本分词、向量化、加权、计算余弦相似度、单遍聚类，得到输出
 
 
 # 导包
@@ -15,6 +15,7 @@ import re
 import jieba
 from gensim.models import Word2Vec
 from sklearn.feature_extraction.text import TfidfVectorizer
+from gensim.models import word2vec
 
 
 def is_chinese(uchar):
@@ -364,6 +365,28 @@ def event_influ_calcu(cluster_text):
     return dict1
 
 
+def getKeywords_tfidf(corpus,topK):
+    Vectorizer=TfidfVectorizer()
+    tfidf=Vectorizer.fit_transform(corpus)
+    word = Vectorizer.get_feature_names()
+    weight=tfidf.toarray()
+    keys = []
+    for i in range(len(weight)):
+        df_word, df_weight = [], []
+        for j in range(len(word)):
+            df_word.append(word[j])
+            df_weight.append(weight[i][j])
+        df_word = pd.DataFrame(df_word,columns=['word'])
+        df_weight = pd.DataFrame(df_weight,columns=['weight'])
+        word_weight = pd.concat([df_word, df_weight], axis=1)
+        word_weight = word_weight.sort_values(by="weight",ascending = False)
+        keyword = np.array(word_weight['word'])
+        word_split = [keyword[x] for x in range(0,topK)]
+        word_split = " ".join(word_split)
+        keys.append(word_split)
+    return keys
+
+
 def extract_hashtag(data):
     # 1、提取每个文本内容的hashtag
     df1 = pd.DataFrame(data)  # 读取集合的全部数据
@@ -407,11 +430,28 @@ def extract_hashtag(data):
     print(model.wv.index2word)
     print(model)
     corpus_vec = tfidf(fenci_list, model)  # ,len(fenci_list)
-    clusters, cluster_text = single_pass(corpus_vec, result_list1, 0.80)
-    print(cluster_text)    # 最终聚类结果
+    clusters, cluster_text = single_pass(corpus_vec, result_list1, 0.85)
+    print("最终聚类结果:", cluster_text)    # 最终聚类结果
+    # 提取话题关键字
+    li_content_all = []
+    for d_i in range(len(cluster_text)):
+        li_content = []
+        for l_i in cluster_text[d_i]:
+            li_content.append(l_i['content'])
+        li_content = ' '.join(li_content)
+        print(li_content)
+        li_content_all.append(li_content)  # li_content_all是一个列表，里面存放每个话题的#内容分词，每个话题一个字符串
+    print(li_content_all)
+    result = getKeywords_tfidf(li_content_all, 10)
+    print(result)
+    """
+    按tf-idf提取关键词
+    """
+
     # 3：影响力计算
     dict1 = event_influ_calcu(cluster_text)    #
     print(dict1)
+    # event_influ_calcu(cluster_text)    #
 # 创建连接MongoDB数据库函数
 def connection():
     # 1:账号密码方式连接本地MongoDB数据库服务 | "mongodb://用户名:密码@公网ip:端口/"
@@ -420,18 +460,12 @@ def connection():
     collection = conn["influence"]["keyword6_status"]
     data = collection.find()
     data = list(data)  # 在转换成列表时，可以根据情况只过滤出需要的数据。(for遍历过滤)
-    print((data))
     # 根据hashtag聚类
     extract_hashtag(data)
 
 
 # 创建主函数
 def main():
-    # 1：消息服务接口,接收数据导入成功的通知，没写
-
-    # 2：连接数据库，得到集合数据，数据库访问接口，要改接口
-    # 收到通知后，以事件id作为参数调用提供的一个事件关联数据查询接口翻页查询事件关联的数据进行事件影响力分析。
-    # 怎么通过id访问，目前是通过数据库名和集合名读取数据
     connection()
 
 
