@@ -236,7 +236,7 @@ def cal_weight(x):
     return score_li
 
 
-def event_influ_calcu(cluster_text):
+def event_influ_calcu(cluster_text, content_topic):  # 修改
     # 1:读取数据集的每一个话题数据，计算每个话题的所需内容
     # 读取数据库，获得转发，评论数；微博文章数；持续时间；时间单元数差；爬虫起止时间
     li_all = []  # 存放每个话题的全部转发，评论数
@@ -349,14 +349,14 @@ def event_influ_calcu(cluster_text):
     # 4:将每个话题的对应结果存入列表
     for i in range(len(norm_influ_result)):
         dict2 = {}
-        dict2["topic"] = "topic_name"
+        dict2["topic"] = content_topic[i]    # 修改
         dict2["topic_influence"] = norm_influ_result[i]
         dict2["user_engage"] = user_engage[i]
         dict2["topic_coverage"] = norm_cover_result[i]
         dict2["topic_activity"] = norm_activity_result[i]
         dict2["topic_novelty"] = norm_novelty_result[i]
         dict2["topic_persistence"] = norm_persist_result[i]
-        list1.append(dict2)    # list1是字典格式
+        list1.append(dict2)    # list1是列表里有字典的格式
 
     list1 = sorted(list1, key=lambda list1: list1["topic_influence"], reverse=True)
     print("降序后列表:{}".format(list1))
@@ -373,10 +373,10 @@ def extract_hashtag(data):
     df5 = df1['content'].tolist()  # 只提取正文内容
     content_list1 = []
     for str in df5:
-        pattern = re.compile('#(.+)#')  # 匹配从#开始，到#结束的内容
+        pattern = re.compile('#(.*?)#')  # 匹配从#开始，到#结束的内容, re.compile('#(.+)#'),.*?最小匹配, .*贪婪匹配
         result = pattern.findall(str)
         content_list1.append(result)      # content_list1存放全部的内容
-    # print(content_list1)
+    print(content_list1)
 
     # 2、获取带有hashtag的内容及对应的转发、评论和时间
     result_list1 = []
@@ -388,17 +388,14 @@ def extract_hashtag(data):
             result_dict['commentsCount'] = df3[index]
             result_dict['createAt'] = df4[index]
             result_list1.append(result_dict)   # result_list1存放带有hashtag的内容及对应的转发、评论和时间
-    # print(result_list1)  # [{'content': '昊嘉青易# #赖小民一审被判死刑', 'repostsCount': 0, 'commentsCount': 0, 'createAt': '2021-01-09 22:23:30'},{...},,,]
-    result_list2 = copy.deepcopy(result_list1)
+    print(result_list1)  # [{'content': '昊嘉青易# #赖小民一审被判死刑', 'repostsCount': 0, 'commentsCount': 0, 'createAt': '2021-01-09 22:23:30'},{...},,,]
+    # result_list2 = copy.deepcopy(result_list1)
     # 对HashTag的文本分词
+    fenci_list=[]   # 这个列表里放全部的分词，用来做词向量化
     for content_dict1 in result_list1:
         list_result = fenci(content_dict1['content'])
-        content_dict1['content'] = list_result
+        fenci_list.append(list_result)
     # print(result_list1)  # [{'content': '昊嘉青易 赖 小民 一审 被判 死刑', 'repostsCount': 0, 'commentsCount': 0, 'createAt': '2021-01-09 22:23:30'}, {...}]
-    # 只读取content
-    fenci_list=[]   # 这个列表里放全部的分词，用来做词向量化
-    for content_dict2 in result_list1:
-        fenci_list.append(content_dict2['content'])
     # print(fenci_list)  # ['昊嘉青易 赖 小民 一审 被判 死刑', '赖 小民 一审 被判 死刑',...]
     list1_str = ' '.join(fenci_list)
     sentences = [list1_str.split(' ')]   # [['昊嘉青易', '赖', '小民', '一审',...]]
@@ -407,17 +404,36 @@ def extract_hashtag(data):
     print(model.wv.index2word)
     print(model)
     corpus_vec = tfidf(fenci_list, model)  # ,len(fenci_list)
+
+    # # 对HashTag的文本分词
+    # for content_dict2 in result_list1:
+    #     list_result = content_dict2['content']
+    #     content_dict2['content'] = list_result
+    # print(result_list1)  # [{'content': '昊嘉青易 赖 小民 一审 被判 死刑', 'repostsCount': 0, 'commentsCount': 0, 'createAt': '2021-01-09 22:23:30'}, {...}]
+
     clusters, cluster_text = single_pass(corpus_vec, result_list1, 0.80)
     print(cluster_text)    # 最终聚类结果
+
+    # 以下几行需添加, 为了得到话题名称
+    print(list(cluster_text.values()))
+    content_topic = []
+    for p in list(cluster_text.values()):
+        content_1 = [i['content'] for i in p]
+        print(content_1)
+        maxtag = max(content_1, key=content_1.count)
+        print(maxtag)
+        content_topic.append(maxtag)
+    print(content_topic)
+
     # 3：影响力计算
-    dict1 = event_influ_calcu(cluster_text)    #
+    dict1 = event_influ_calcu(cluster_text, content_topic)    #修改
     print(dict1)
 # 创建连接MongoDB数据库函数
 def connection():
     # 1:账号密码方式连接本地MongoDB数据库服务 | "mongodb://用户名:密码@公网ip:端口/"
     conn = MongoClient("mongodb://root:19980529@127.0.0.1:27017/")  # 用户名、密码可修改
     # 2:连接本地数据库(influence)和集合
-    collection = conn["influence"]["keyword6_status"]
+    collection = conn["influence"]["keyword3_status"]
     data = collection.find()
     data = list(data)  # 在转换成列表时，可以根据情况只过滤出需要的数据。(for遍历过滤)
     print((data))

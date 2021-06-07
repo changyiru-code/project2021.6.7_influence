@@ -1,13 +1,11 @@
-"""该代码与2021.6.2docker里调试的代码一样，可直接push，对social_influence.py的读数据库部分的调试，应该没问题了"""
-# # 模型第三步，读取mongodb数据库，只读取一个事件，时间以时为单位（话题持续多少小时），运行公式模型，计算单独一个事件的影响力，输出结果格式为字典，进行归一化
+# # 读取mongodb数据库，只读取一个事件，时间以时为单位（话题持续多少小时），运行公式模型，计算单独一个事件的影响力，输出结果格式为字典，进行归一化
 # 读取数据库里的测试数据，验证模型
 # 存入数据库
 """
-该代码把一个事件当作一个话题，只计算了一个事件的影响力
-将一个事件内的文章聚类出多个话题的代码在social_influence_topic里
+该代码将一个事件内的文章聚类出多个话题
 """
 """
-2021.6.7 15:55代码已完成计算事件的多个话题的影响力，但还未提取到每个话题的名字
+2021.6.7 19:27代码已完成计算事件的多个话题的影响力，并提取到每个话题的名字
 """
 # 导包
 from pymongo import MongoClient
@@ -88,7 +86,7 @@ def cal_weight(x):
 
 
 # 读取事件集合，获得转发，评论数；微博文章数；持续时间；时间单元数差；爬虫起止时间
-def event_influ_calcu(cluster_text, topicId):
+def event_influ_calcu(cluster_text, topicId, content_topic):
     # 1:读取数据集的每一个话题数据，计算每个话题的所需内容
     # 读取数据库，获得转发，评论数；微博文章数；持续时间；时间单元数差；爬虫起止时间
     li_all = []  # 存放每个话题的全部转发，评论数
@@ -211,7 +209,7 @@ def event_influ_calcu(cluster_text, topicId):
     dict1["case_id"] = topicId
     for i in range(len(norm_influ_result)):
         dict2 = {}
-        dict2["topic"] = "topic_name"
+        dict2["topic"] = content_topic[i]
         dict2["topic_influence"] = norm_influ_result[i]
         dict2["user_engage"] = user_engage[i]
         dict2["topic_coverage"] = norm_cover_result[i]
@@ -457,16 +455,13 @@ def extract_hashtag(data):
             result_dict['createdAt'] = df4[index]
             result_list1.append(result_dict)   # result_list1存放带有hashtag的内容及对应的转发、评论和时间
     # print(result_list1)  # [{'content': '昊嘉青易# #赖小民一审被判死刑', 'repostsCount': 0, 'commentsCount': 0, 'createAt': '2021-01-09 22:23:30'},{...},,,]
-    result_list2 = copy.deepcopy(result_list1)
+    # result_list2 = copy.deepcopy(result_list1)
     # 对HashTag的文本分词
+    fenci_list=[]   # 这个列表里放全部的分词，用来做词向量化
     for content_dict1 in result_list1:
         list_result = fenci(content_dict1['content'])
-        content_dict1['content'] = list_result
+        fenci_list.append(list_result)
     # print(result_list1)  # [{'content': '昊嘉青易 赖 小民 一审 被判 死刑', 'repostsCount': 0, 'commentsCount': 0, 'createAt': '2021-01-09 22:23:30'}, {...}]
-    # 只读取content
-    fenci_list=[]   # 这个列表里放全部的分词，用来做词向量化
-    for content_dict2 in result_list1:
-        fenci_list.append(content_dict2['content'])
     # print(fenci_list)  # ['昊嘉青易 赖 小民 一审 被判 死刑', '赖 小民 一审 被判 死刑',...]
     list1_str = ' '.join(fenci_list)
     sentences = [list1_str.split(' ')]   # [['昊嘉青易', '赖', '小民', '一审',...]]
@@ -475,9 +470,21 @@ def extract_hashtag(data):
     print(model.wv.index2word)
     print(model)
     corpus_vec = tfidf(fenci_list, model)  # ,len(fenci_list)
+
     clusters, cluster_text = single_pass(corpus_vec, result_list1, 0.80)
     print(cluster_text)    # 最终聚类结果
-    return cluster_text
+
+    # 以下几行需添加, 为了得到话题名称
+    content_topic = []
+    for p in list(cluster_text.values()):
+        content_1 = [i['content'] for i in p]
+        print(content_1)
+        maxtag = max(content_1, key=content_1.count)
+        print(maxtag)
+        content_topic.append(maxtag)
+    print(content_topic)
+
+    return cluster_text, content_topic
 
 
 # 通过ID读数据库数据
@@ -531,10 +538,10 @@ def getdata_fromdb_by_id(topicId):
         logging.info("数据库数据读取完毕,接下来是影响力计算")  # jia
 
         # 2.5: 根据hashtag聚类,得到一个事件下的多个话题
-        cluster_text = extract_hashtag(result_list)
+        cluster_text, content_topic = extract_hashtag(result_list)
 
         # 3：影响力计算
-        dict1 = event_influ_calcu(cluster_text, topicId)
+        dict1 = event_influ_calcu(cluster_text, topicId, content_topic)
         logging.info("影响力计算结束，数据输出")  # gai1
         print(dict1)
 
