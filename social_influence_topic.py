@@ -155,7 +155,7 @@ def event_influ_calcu(cluster_text, topicId, content_topic):
     norm_cover_result = normalize(count_result)  # 归一化覆盖度值
     print(norm_cover_result)
 
-    func1 = lambda x, y: np.log(x / y)
+    func1 = lambda x, y: np.log((x / y)+1)
     result = map(func1, li_count, li_T)
     li_count_result = list(result)  # ln(Mj/Tj) 计算话题活跃度
     norm_activity_result = normalize(li_count_result)  # 归一化活跃度值
@@ -182,7 +182,7 @@ def event_influ_calcu(cluster_text, topicId, content_topic):
     score = cal_weight(repose_comment)  # 计算用户参与度
     print(score)
     # 用户参与度归一化
-    func4 = lambda x: np.log(x)/np.log(max(score))
+    func4 = lambda x: np.log(x+1.01)/np.log(max(score)+1.01)
     result = map(func4, score)
     norm_score_result = list(result)  # ln(x)/ln(max)
     user_engage = [i * 100 for i in norm_score_result]   # 用户参与度归一化,乘以100
@@ -199,7 +199,7 @@ def event_influ_calcu(cluster_text, topicId, content_topic):
     influence = [score[i] * li_count_result[i] * count_result[i] * n_result[i] * li_dt_result[i] for i in range(len(score))]  # 总公式  话题影响力值
     print(influence)
     # 话题影响力总值归一化
-    func5 = lambda x: np.log(x)/np.log(max(influence))
+    func5 = lambda x: np.log(x+1.01)/np.log(max(influence)+1.01)
     result = map(func5, influence)
     norm_influ_result = list(result)  # ln(x)/ln(max) 话题影响力归一化
     norm_influ_result = [i * 100 for i in norm_influ_result]  # l话题影响力归一化,乘以100
